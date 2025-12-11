@@ -559,7 +559,6 @@ class ImageProcessor:
         """Generate generic dummy data based on structure."""
         # Simple fallback that generates a basic structure
 
-
     async def process_single_image(self, image_data: bytes, document_type: Optional[str] = None) -> Dict:
         """Process a single image using dummy data generation."""
         try:
@@ -609,10 +608,6 @@ async def process_image(
         raise HTTPException(status_code=500, detail=str(e))
 
 # For Vercel, we need to export the app as a handler
-import asyncio
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 # For Vercel, we need to create a handler
