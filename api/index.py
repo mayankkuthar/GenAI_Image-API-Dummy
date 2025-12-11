@@ -1,24 +1,32 @@
+# Vercel-compatible FastAPI application
 import os
 import json
 import re
 import logging
 import base64
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from PIL import Image
-import io
 from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
 import random
-from datetime import timedelta
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+# Import FastAPI and related modules
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from PIL import Image
+from dotenv import load_dotenv
+import io
+
+# Import Mangum for Vercel compatibility
+from mangum import Mangum
+
+# Load environment variables
+load_dotenv()
 
 # Document configurations
 DAYBOOK_SHEET_OUTPUT_STRUCTURE = '''
@@ -175,55 +183,6 @@ DOCUMENT_CONFIG = {
     }
 }
 
-BASE_SYSTEM_MESSAGE_COMMON = """
-You are an advanced AI system specialized in analyzing enterprise financial document images and extracting specific information. Your task is to carefully examine the provided image and extract data according to a given output structure. This task requires you to handle various financial document types, including invoices, receipts, bank statements, financial reports, and handwritten or semi-structured forms.
-
-First, review the output structure that specifies the information you need to extract:
-
-<output_structure>
-{{OUTPUT_STRUCTURE}}
-</output_structure>
-
-This output structure is in JSON format. Each key represents a piece of financial information to look for in the image, and the corresponding value indicates the expected data type.
-
-Instructions:
-1. Analyze the financial document image thoroughly.
-2. Pay special attention to the alignment of columns and rows, especially if the image appears tilted or angled.
-3. Extract all relevant information as specified in the output structure.
-4. Double-check the correspondence between particulars and their associated values to ensure accurate matching.
-5. Format your response as a JSON object that exactly matches the given output structure.
-6. Use appropriate data types (strings, numbers, booleans, null) for each field.
-7. If information for a field is not present in the image, use null for numbers and booleans, or an empty string for strings.
-8. If any content is unreadable, use "##UNREADABLE##" in place of that content.
-9. Include all specified fields, even if some are not present in the image.
-
-Remember:
-- Pay special attention to handwriting interpretation. If unsure about a value, mark it "##UNREADABLE##".
-- Only output the JSON data. Do not include any explanations or additional text
-- Adhere strictly to the provided output structure.
-- Use appropriate data types (strings, numbers, booleans, null) for each field
-- Include all specified fields, even if some information is not present or illegible in the image.
-
-Now, proceed with your examination and data extraction from the provided enterprise financial document image.
-"""
-
-# Initialize environment variables
-load_dotenv()
-
-app = FastAPI(title="Image Processing API")
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
-# Dummy data configuration
-DUMMY_DATA_ENABLED = True  # Set to True to use dummy data instead of GenAI model
-
 class JsonCorrector:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -347,16 +306,6 @@ class JsonCorrector:
                     "partial_content": text[:2000] + "..." if len(text) > 2000 else text
                 }
 
-@app.get("/")
-def read_root():
-    return {
-        "message": "Welcome to the Image Processing API",
-        "endpoints": {
-            "/": "This welcome message",
-            "/process-image/": "POST endpoint to process an image and extract information"
-        }
-    }
-
 class ImageProcessor:
     def __init__(self, model_type="dummy"):
         """Initialize the image processor with dummy data generator."""
@@ -371,9 +320,6 @@ class ImageProcessor:
             # Default to Daybook if no valid document type provided
             logging.warning(f"Invalid document type '{document_type}', defaulting to Daybook")
             document_type = "Daybook"
-        
-        # Get the structure for the document type
-        structure = DOCUMENT_CONFIG[document_type]["output_structure"]
         
         # Parse the structure to understand the fields
         # We'll generate realistic dummy data based on the structure
@@ -390,9 +336,9 @@ class ImageProcessor:
             logging.info("Generating One Time Info Sheet dummy data")
             return self._generate_one_time_info_dummy()
         else:
-            # Fallback to a generic structure
-            logging.info("Generating generic dummy data")
-            return self._generate_generic_dummy(structure)
+            # Fallback to Daybook
+            logging.info("Unknown document type, generating Daybook dummy data")
+            return self._generate_daybook_dummy()
     
     def _generate_daybook_dummy(self) -> Dict:
         """Generate dummy data for Daybook document type."""
@@ -555,16 +501,11 @@ class ImageProcessor:
             }
         }
     
-    def _generate_generic_dummy(self, structure: str) -> Dict:
-        """Generate generic dummy data based on structure."""
-        # Simple fallback that generates a basic structure
-
     async def process_single_image(self, image_data: bytes, document_type: Optional[str] = None) -> Dict:
         """Process a single image using dummy data generation."""
         try:
             # Generate dummy data instead of processing with AI model
             return self.generate_dummy_data(document_type)
-
         except Exception as e:
             error_msg = f"Error generating dummy data: {str(e)}"
             logging.error(error_msg)
@@ -573,16 +514,38 @@ class ImageProcessor:
 # Initialize the image processor
 image_processor = ImageProcessor(model_type="dummy")
 
+# Create FastAPI app
+app = FastAPI(title="Financial Data API")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "Welcome to the Financial Data API",
+        "endpoints": {
+            "/": "This welcome message",
+            "/process-image/": "POST endpoint to generate dummy financial data"
+        }
+    }
+
 @app.post("/process-image/")
 async def process_image(
     file: UploadFile = File(...), 
     document_type: Optional[str] = Form(None)
 ):
     """
-    Process an uploaded image and extract information based on document type.
+    Generate dummy financial data based on document type.
     
     Args:
-        file: The uploaded image file
+        file: The uploaded image file (not actually processed, just validated)
         document_type: Optional document type ("PT Sheet Old", "PT Sheet New", "Daybook", "One Time Info Sheet")
     """
     try:
@@ -594,7 +557,7 @@ async def process_image(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
-        # Process the image
+        # Generate dummy data
         result = await image_processor.process_single_image(image_data, document_type)
 
         if "error" in result:
@@ -607,12 +570,5 @@ async def process_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# For Vercel, we need to export the app as a handler
-from mangum import Mangum
-
-# For Vercel, we need to create a handler
+# Vercel handler
 handler = Mangum(app, lifespan="off")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
