@@ -1,12 +1,10 @@
-# Vercel serverless function - Corrected FastAPI implementation
+# Vercel serverless function - Simplified FastAPI implementation without PIL
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 from typing import Optional
 import random
-import io
-from PIL import Image
 from datetime import datetime, timedelta
 
 # Create FastAPI app
@@ -27,12 +25,10 @@ def read_root():
 
 @app.post("/process-image/")
 async def process_image(file: UploadFile = File(...), document_type: Optional[str] = Form(None)):
-    # Simple validation
-    try:
-        image_data = await file.read()
-        Image.open(io.BytesIO(image_data))
-    except:
-        raise HTTPException(status_code=400, detail="Invalid image file")
+    # Simple file validation (just check filename extension)
+    filename = file.filename.lower()
+    if not any(filename.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']):
+        raise HTTPException(status_code=400, detail="Invalid image file extension")
     
     # Return simple dummy data based on document type
     if document_type == "Daybook":
