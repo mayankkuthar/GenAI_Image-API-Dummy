@@ -1,8 +1,6 @@
-# Vercel serverless function - Minimal working implementation
+# Vercel serverless function using ASGI handler
 from fastapi import FastAPI
-from mangum import Mangum
 
-# Create FastAPI app
 app = FastAPI()
 
 @app.get("/")
@@ -13,5 +11,5 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
-# Create the handler for Vercel
-handler = Mangum(app)
+# For Vercel, we need to expose the app directly
+# Vercel will automatically wrap it with their handler
