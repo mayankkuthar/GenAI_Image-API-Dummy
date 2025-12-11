@@ -1,4 +1,4 @@
-# Vercel serverless function - Minimal FastAPI implementation
+# Vercel serverless function - Corrected FastAPI implementation
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -46,5 +46,5 @@ async def process_image(file: UploadFile = File(...), document_type: Optional[st
     else:
         return {"Day 1": {"Date": "01/01/2024", "Amount": 1000.0}}
 
-# Vercel handler
-handler = Mangum(app)
+# Create the handler for Vercel
+handler = Mangum(app, lifespan="off")

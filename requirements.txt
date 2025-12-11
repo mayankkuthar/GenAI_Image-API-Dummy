@@ -1,6 +1,4 @@
-fastapi==0.104.1
-python-multipart==0.0.6
-uvicorn==0.23.2
-pillow==10.0.1
-python-dotenv==1.0.0
-mangum==0.17.0
+fastapi==0.68.0
+python-multipart==0.0.5
+pillow==8.3.2
+mangum==0.11.0
